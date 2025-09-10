@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { loadNews, getAll } from './newsLoader';
+import { normalizeToTokens, simpleScore } from './text';
 
 const router = Router();
 
@@ -25,7 +26,30 @@ router.get('/search', (req, res) => {
     return res.status(400).json({ error: 'Missing query param q' });
   }
 
-  res.json({response: q});
+  const queryTokens = normalizeToTokens(q);
+  if (queryTokens.length === 0) {
+    return res.json({ query: q, tokens: [], count: 0, items: [] });
+  }
+
+  const ranked = getAll()
+    .map(a => {
+      const content = `${a.title} ${a.full_text}`;
+      const score = simpleScore(content, queryTokens);
+      return { score, article: a };
+    })
+    .filter(r => r.score > 0)
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return a.article.title.localeCompare(b.article.title);
+    })
+    .slice(0, 10)
+    .map(r => r.article);
+
+  res.json({
+    query: q,
+    count: ranked.length,
+    items: ranked
+  });
 });
 
 export default router;
