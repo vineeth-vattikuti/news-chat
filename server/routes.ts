@@ -47,6 +47,7 @@ router.get('/search', (req, res) => {
 
   res.json({
     query: q,
+    tokens: queryTokens,
     count: ranked.length,
     items: ranked
   });
